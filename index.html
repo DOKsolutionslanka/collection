@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archiving Collection Report - October 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            max-width: 900px;
+            width: 100%;
+            padding: 25px;
+            margin: 0 auto 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .loading-main {
+            text-align: center;
+            padding: 40px 15px;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .main-content {
+            display: none;
+        }
+
+        .main-content.visible {
+            display: block;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 320px;
+            margin: 20px auto;
+        }
+        
+        /* Net Sales Box - Made Smaller */
+        .net-sales-highlight {
+            background: linear-gradient(135deg, #FF9A56 0%, #FF6B6B 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 18px 0;
+            box-shadow: 0 6px 15px rgba(255, 107, 107, 0.2);
+            position: relative;
+            overflow: hidden;
+            max-width: 70%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .net-sales-highlight::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+
+        .net-sales-label {
+            font-size: 0.9em;
+            opacity: 0.95;
+            margin-bottom: 6px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .net-sales-value {
+            font-size: 1.7em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .net-sales-month {
+            font-size: 0.8em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Compact Metrics Row - Now with 4 boxes */
+        .metrics-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .metric-box {
+            flex: 1;
+            min-width: 150px;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Physical Archiving - Purple Gradient */
+        .metric-box.physical {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Digital Archiving - Blue Gradient */
+        .metric-box.digital {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        /* Total Collection - Orange/Pink Gradient */
+        .metric-box.total {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .metric-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        .metric-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        }
+
+        .metric-box.collection-rate {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .metric-label {
+            font-size: 0.75em;
+            opacity: 0.95;
+            margin-bottom: 6px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .metric-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .metric-icon {
+            font-size: 1.2em;
+            margin-bottom: 6px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Download Section */
+        .download-section {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .download-btn.pdf {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .download-btn.excel {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+        }
+
+        .download-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .breakdown-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+
+        .breakdown-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .breakdown-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .breakdown-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .breakdown-section.visible {
+            display: block;
+        }
+
+        .breakdown-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .breakdown-content {
+            display: none;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .breakdown-content.active {
+            display: block;
+        }
+
+        .breakdown-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+            font-size: 0.9em;
+        }
+
+        .amount {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1em;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 15px;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+
+        .summary-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .no-data-message {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .date-info {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 0.85em;
+        }
+
+        .data-source {
+            text-align: center;
+            color: #999;
+            margin-top: 10px;
+            font-size: 0.8em;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .metrics-row {
+                flex-direction: column;
+            }
+            
+            .metric-box {
+                min-width: 100%;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .chart-container {
+                height: 280px;
+            }
+
+            .download-section {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .download-btn {
+                width: 200px;
+                justify-content: center;
+            }
+        }
+
+        /* For smaller laptops */
+        @media (max-width: 1024px) {
+            .container {
+                max-width: 95%;
+            }
+
+            .metrics-row {
+                gap: 8px;
+            }
+
+            .metric-box {
+                min-width: 140px;
+                padding: 12px;
+            }
+
+            .metric-value {
+                font-size: 1.2em;
+            }
+
+            .metric-label {
+                font-size: 0.7em;
+            }
+        }
+
+        /* For very small screens */
+        @media (max-width: 480px) {
+            .metrics-row {
+                gap: 10px;
+            }
+            
+            .metric-box {
+                min-width: 120px;
+                padding: 10px;
+            }
+            
+            .metric-value {
+                font-size: 1.1em;
+            }
+            
+            .metric-label {
+                font-size: 0.65em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Archiving Collection Report</h1>
+            <p class="subtitle" id="subtitle">Monthly Collection Summary - Loading...</p>
+        </header>
+
+        <div class="loading-main" id="loadingMain">
+            <div class="spinner"></div>
+            <div>Loading data from Google Sheets...</div>
+        </div>
+
+        <div class="main-content" id="mainContent">
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <!-- Net Sales Box - Made Smaller -->
+            <div class="net-sales-highlight">
+                <div class="net-sales-label">Previous Month Net Sales</div>
+                <div class="net-sales-value" id="netSaleValue">Rs. 0</div>
+                <div class="net-sales-month" id="netSaleMonth">Loading...</div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="pieChart"></canvas>
+            </div>
+            
+            <!-- Compact Metrics Row - Now with 4 boxes including Total -->
+            <div class="metrics-row">
+                <div class="metric-box physical">
+                    <div class="metric-icon">📁</div>
+                    <div class="metric-label">Physical Archiving (PA)</div>
+                    <div class="metric-value" id="paValue">Rs. 0</div>
+                </div>
+                
+                <div class="metric-box digital">
+                    <div class="metric-icon">💻</div>
+                    <div class="metric-label">Digital Archiving (DA)</div>
+                    <div class="metric-value" id="daValue">Rs. 0</div>
+                </div>
+                
+                <div class="metric-box total">
+                    <div class="metric-icon">💰</div>
+                    <div class="metric-label">Total Collection</div>
+                    <div class="metric-value" id="totalValue">Rs. 0</div>
+                </div>
+                
+                <div class="metric-box collection-rate">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-label">Collection Rate</div>
+                    <div class="metric-value" id="collectionRateValue">0%</div>
+                </div>
+            </div>
+
+            <!-- Download Section -->
+            <div class="download-section">
+                <button class="download-btn pdf" onclick="downloadPDF()" id="pdfBtn">
+                    📄 Download PDF
+                </button>
+                <button class="download-btn excel" onclick="downloadExcel()" id="excelBtn">
+                    📊 Download Excel
+                </button>
+            </div>
+
+            <button class="breakdown-btn" id="breakdownBtn" onclick="toggleBreakdown()">
+                📋 View Detailed Breakdown by Customer
+            </button>
+
+            <div class="breakdown-section" id="breakdownSection">
+                <div class="breakdown-tabs">
+                    <button class="tab-btn active" onclick="showTab('physical')">Physical Archiving</button>
+                    <button class="tab-btn" onclick="showTab('digital')">Digital Archiving</button>
+                </div>
+
+                <div class="breakdown-content active" id="physicalContent">
+                    <div class="loading-spinner">Loading data...</div>
+                </div>
+
+                <div class="breakdown-content" id="digitalContent">
+                    <div class="loading-spinner">Loading data...</div>
+                </div>
+            </div>
+            
+            <div class="date-info">
+                Report generated as of <span id="currentDate">October 21, 2025</span>
+            </div>
+            <div class="data-source">
+                Data Source: Collection Report - DOK
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1ke3ape3CKmGwxJwHOvZGKizdOON7OryBawSE6lY-u5o/export?format=csv';
+        
+        let physicalArchiving = 0;
+        let digitalArchiving = 0;
+        let total = 0;
+        let breakdownData = null;
+        let chartInstance = null;
+        let isBreakdownVisible = false;
+        let reportMonth = 'October 2025';
+        let previousMonthNetSales = 0;
+        let previousMonthName = '';
+        let breakdownProcessed = false;
+        let physicalMap = {};
+        let digitalMap = {};
+        
+        // Format currency in thousands
+        function formatCurrency(value) {
+            return 'Rs. ' + Math.round(value).toLocaleString('en-LK', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+        
+        // Calculate totals from sheet data
+        function calculateTotals(data) {
+            let paTotal = 0;
+            let daTotal = 0;
+            let rowsProcessed = 0;
+            
+            // Debug: Log the first few rows to understand the structure
+            console.log('First 3 rows of data:', data.slice(0, 3));
+            
+            // Try to get month from T1 cell (row 0, column 19)
+            if (data[0] && data[0][19]) {
+                reportMonth = data[0][19].trim();
+                console.log('Found report month in T1:', reportMonth);
+            } else {
+                // Try alternative positions for month
+                if (data[0] && data[0][18]) {
+                    reportMonth = data[0][18].trim();
+                    console.log('Found report month in S1:', reportMonth);
+                }
+            }
+            
+            // Try to get previous month name from S2 cell (row 1, column 18)
+            if (data[1] && data[1][18]) {
+                previousMonthName = data[1][18].trim();
+                console.log('Found previous month name in S2:', previousMonthName);
+            }
+            
+            // Try to get previous month net sales from T2 cell (row 1, column 19)
+            if (data[1] && data[1][19]) {
+                let netSalesStr = String(data[1][19]).replace(/,/g, '').replace(/\s/g, '').replace('Rs.', '').replace('LKR', '');
+                previousMonthNetSales = parseFloat(netSalesStr) || 0;
+                console.log('Found previous month net sales in T2:', previousMonthNetSales);
+            }
+            
+            console.log('Report Month:', reportMonth);
+            console.log('Previous Month Name:', previousMonthName);
+            console.log('Previous Month Net Sales:', previousMonthNetSales);
+            
+            // Process ALL rows dynamically - skip header (row 0) and continue until end
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                
+                // Skip completely empty rows
+                if (!row || row.length === 0) continue;
+                
+                // Skip rows without operating unit in column A
+                if (!row[0] || row[0].trim() === '') continue;
+                
+                const operatingUnit = row[0].trim();
+                
+                // Only process Physical Archiving or Digital Archiving rows
+                if (operatingUnit !== 'Physical Archiving' && operatingUnit !== 'Digital Archiving') {
+                    continue;
+                }
+                
+                // Get amount from column G (index 6), handle comma-separated values
+                let amountStr = row[6];
+                if (!amountStr || amountStr === '') continue;
+                
+                // Remove commas, spaces, and currency symbols if present
+                amountStr = String(amountStr).replace(/,/g, '').replace(/\s/g, '').replace('Rs.', '').replace('LKR', '');
+                const amount = parseFloat(amountStr);
+                
+                if (isNaN(amount) || amount === 0) continue;
+                
+                if (operatingUnit === 'Physical Archiving') {
+                    paTotal += amount;
+                    rowsProcessed++;
+                } else if (operatingUnit === 'Digital Archiving') {
+                    daTotal += amount;
+                    rowsProcessed++;
+                }
+            }
+            
+            console.log('Rows Processed:', rowsProcessed);
+            console.log('Physical Total:', paTotal);
+            console.log('Digital Total:', daTotal);
+            console.log('Grand Total:', paTotal + daTotal);
+            
+            return { physical: paTotal, digital: daTotal };
+        }
+
+        // Load and process data
+        function loadData() {
+            Papa.parse(SHEET_URL, {
+                download: true,
+                complete: function(results) {
+                    try {
+                        if (!results.data || results.data.length === 0) {
+                            throw new Error('No data received from Google Sheets');
+                        }
+                        
+                        const totals = calculateTotals(results.data);
+                        physicalArchiving = totals.physical;
+                        digitalArchiving = totals.digital;
+                        total = physicalArchiving + digitalArchiving;
+                        
+                        // Store data for breakdown
+                        breakdownData = results.data;
+                        
+                        // Process breakdown data for downloads
+                        processBreakdownData();
+                        
+                        // Update UI
+                        updateUI();
+                        createChart();
+                        
+                        // Hide loading, show content
+                        document.getElementById('loadingMain').style.display = 'none';
+                        document.getElementById('mainContent').classList.add('visible');
+                    } catch (error) {
+                        console.error('Error processing data:', error);
+                        showError('Error processing data: ' + error.message);
+                    }
+                },
+                error: function(error) {
+                    console.error('Error loading data:', error);
+                    showError('Error loading data. Please ensure the Google Sheet is publicly accessible.');
+                }
+            });
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            
+            document.getElementById('loadingMain').style.display = 'none';
+            document.getElementById('mainContent').classList.add('visible');
+        }
+
+        // Update UI with calculated values
+        function updateUI() {
+            // Calculate collection as percentage of previous month net sales
+            const collectionPercent = previousMonthNetSales > 0 ? ((total / previousMonthNetSales) * 100).toFixed(1) : 0;
+            
+            document.getElementById('paValue').textContent = formatCurrency(physicalArchiving);
+            document.getElementById('daValue').textContent = formatCurrency(digitalArchiving);
+            document.getElementById('totalValue').textContent = formatCurrency(total);
+            
+            // Update net sales box
+            document.getElementById('netSaleValue').textContent = formatCurrency(previousMonthNetSales);
+            document.getElementById('netSaleMonth').textContent = previousMonthName || 'Previous Month';
+            
+            // Update collection rate
+            document.getElementById('collectionRateValue').textContent = collectionPercent + '%';
+            
+            // Update subtitle with month from T1
+            document.getElementById('subtitle').textContent = 'Monthly Collection Summary - ' + reportMonth;
+            
+            // Update current date
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            document.getElementById('currentDate').textContent = dateStr;
+        }
+
+        // Create pie chart
+        function createChart() {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            // Original pie chart colors
+            const physicalColor = '#FF6384'; // Pink/red color
+            const digitalColor = '#36A2EB'; // Blue color
+            
+            chartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Physical Archiving (PA)', 'Digital Archiving (DA)'],
+                    datasets: [{
+                        data: [physicalArchiving, digitalArchiving],
+                        backgroundColor: [physicalColor, digitalColor],
+                        borderColor: ['#fff', '#fff'],
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': ' + formatCurrency(value) + ' (' + percentage + '%)';
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: reportMonth + ' Collection Distribution',
+                            font: { size: 14 },
+                            padding: { top: 8, bottom: 15 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Download PDF function
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add title
+            doc.setFontSize(20);
+            doc.text('Archiving Collection Report', 105, 20, { align: 'center' });
+            
+            // Add subtitle
+            doc.setFontSize(12);
+            doc.text(reportMonth, 105, 30, { align: 'center' });
+            
+            // Add generation date
+            const today = new Date();
+            doc.text(`Generated: ${today.toLocaleDateString()}`, 105, 37, { align: 'center' });
+            
+            // Add summary section
+            doc.setFontSize(14);
+            doc.text('Summary', 20, 50);
+            
+            // Add metrics
+            doc.setFontSize(11);
+            const collectionPercent = previousMonthNetSales > 0 ? ((total / previousMonthNetSales) * 100).toFixed(1) : 0;
+            
+            const summaryData = [
+                ['Metric', 'Amount'],
+                ['Previous Month Net Sales', formatCurrency(previousMonthNetSales)],
+                ['Physical Archiving (PA)', formatCurrency(physicalArchiving)],
+                ['Digital Archiving (DA)', formatCurrency(digitalArchiving)],
+                ['Total Collection', formatCurrency(total)],
+                ['Collection Rate', collectionPercent + '%']
+            ];
+            
+            // Add summary table
+            doc.autoTable({
+                head: [summaryData[0]],
+                body: summaryData.slice(1),
+                startY: 55,
+                theme: 'grid',
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3
+                },
+                headStyles: {
+                    fillColor: [102, 126, 234],
+                    textColor: 255
+                }
+            });
+            
+            // Add breakdown sections
+            let finalY = doc.lastAutoTable.finalY + 10;
+            
+            // Physical Archiving Breakdown
+            if (Object.keys(physicalMap).length > 0) {
+                doc.setFontSize(14);
+                doc.text('Physical Archiving Breakdown', 20, finalY);
+                finalY += 7;
+                
+                const physicalData = Object.entries(physicalMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([customer, amount]) => [customer, formatCurrency(amount)]);
+                
+                doc.autoTable({
+                    head: [['Customer', 'Amount']],
+                    body: physicalData,
+                    startY: finalY,
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 9,
+                        cellPadding: 2
+                    },
+                    headStyles: {
+                        fillColor: [102, 126, 234],
+                        textColor: 255
+                    }
+                });
+                
+                finalY = doc.lastAutoTable.finalY + 10;
+            }
+            
+            // Digital Archiving Breakdown
+            if (Object.keys(digitalMap).length > 0) {
+                doc.setFontSize(14);
+                doc.text('Digital Archiving Breakdown', 20, finalY);
+                finalY += 7;
+                
+                const digitalData = Object.entries(digitalMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([customer, amount]) => [customer, formatCurrency(amount)]);
+                
+                doc.autoTable({
+                    head: [['Customer', 'Amount']],
+                    body: digitalData,
+                    startY: finalY,
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 9,
+                        cellPadding: 2
+                    },
+                    headStyles: {
+                        fillColor: [79, 172, 254],
+                        textColor: 255
+                    }
+                });
+            }
+            
+            // Save the PDF
+            doc.save(`Archiving_Collection_Report_${reportMonth.replace(/\s+/g, '_')}.pdf`);
+        }
+
+        // Download Excel function
+        function downloadExcel() {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Create summary worksheet
+            const wsSummaryData = [
+                ['Archiving Collection Report'],
+                ['Month', reportMonth],
+                ['Generated Date', new Date().toLocaleDateString()],
+                [''],
+                ['Summary'],
+                ['Metric', 'Amount'],
+                ['Previous Month Net Sales', previousMonthNetSales],
+                ['Physical Archiving (PA)', physicalArchiving],
+                ['Digital Archiving (DA)', digitalArchiving],
+                ['Total Collection', total],
+                ['Collection Rate (%)', previousMonthNetSales > 0 ? ((total / previousMonthNetSales) * 100).toFixed(1) : 0]
+            ];
+            
+            const wsSummary = XLSX.utils.aoa_to_sheet(wsSummaryData);
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+            
+            // Create Physical Archiving worksheet
+            if (Object.keys(physicalMap).length > 0) {
+                const physicalData = Object.entries(physicalMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([customer, amount], index) => [
+                        index + 1,
+                        customer,
+                        amount
+                    ]);
+                
+                physicalData.unshift(['No', 'Customer', 'Amount']);
+                const wsPhysical = XLSX.utils.aoa_to_sheet(physicalData);
+                XLSX.utils.book_append_sheet(wb, wsPhysical, 'Physical Archiving');
+            }
+            
+            // Create Digital Archiving worksheet
+            if (Object.keys(digitalMap).length > 0) {
+                const digitalData = Object.entries(digitalMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([customer, amount], index) => [
+                        index + 1,
+                        customer,
+                        amount
+                    ]);
+                
+                digitalData.unshift(['No', 'Customer', 'Amount']);
+                const wsDigital = XLSX.utils.aoa_to_sheet(digitalData);
+                XLSX.utils.book_append_sheet(wb, wsDigital, 'Digital Archiving');
+            }
+            
+            // Save the Excel file
+            XLSX.writeFile(wb, `Archiving_Collection_Report_${reportMonth.replace(/\s+/g, '_')}.xlsx`);
+        }
+
+        // Toggle breakdown visibility
+        function toggleBreakdown() {
+            const section = document.getElementById('breakdownSection');
+            const btn = document.getElementById('breakdownBtn');
+            
+            if (isBreakdownVisible) {
+                section.classList.remove('visible');
+                btn.textContent = '📋 View Detailed Breakdown by Customer';
+                isBreakdownVisible = false;
+            } else {
+                if (!breakdownProcessed) {
+                    processBreakdownData();
+                    breakdownProcessed = true;
+                }
+                section.classList.add('visible');
+                btn.textContent = '📋 Hide Detailed Breakdown';
+                isBreakdownVisible = true;
+            }
+        }
+
+        // Show tab
+        function showTab(type) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.breakdown-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            if (type === 'physical') {
+                tabs[0].classList.add('active');
+                document.getElementById('physicalContent').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('digitalContent').classList.add('active');
+            }
+        }
+
+        // Process breakdown data
+        function processBreakdownData() {
+            if (!breakdownData || breakdownData.length === 0) {
+                document.getElementById('physicalContent').innerHTML = '<div class="no-data-message">No data available</div>';
+                document.getElementById('digitalContent').innerHTML = '<div class="no-data-message">No data available</div>';
+                return;
+            }
+            
+            // Reset maps
+            physicalMap = {};
+            digitalMap = {};
+            let processedCount = 0;
+            
+            // Debug: Log the first few rows to understand the structure
+            console.log('Breakdown data - First 3 rows:', breakdownData.slice(0, 3));
+            
+            // Process ALL rows dynamically - no row limit
+            for (let i = 1; i < breakdownData.length; i++) {
+                const row = breakdownData[i];
+                
+                // Skip completely empty rows
+                if (!row || row.length === 0) continue;
+                
+                // Skip rows without operating unit
+                if (!row[0] || row[0].trim() === '') continue;
+                
+                const operatingUnit = row[0].trim();
+                
+                // Only process Physical or Digital Archiving rows
+                if (operatingUnit !== 'Physical Archiving' && operatingUnit !== 'Digital Archiving') {
+                    continue;
+                }
+                
+                // Get customer name from column J (index 9)
+                const customerName = row[9] ? row[9].trim() : 'Unknown Customer';
+                if (customerName === '') continue;
+                
+                // Get amount from column G (index 6)
+                let amountStr = row[6];
+                if (!amountStr || amountStr === '') continue;
+                
+                // Remove commas, spaces, and currency symbols
+                amountStr = String(amountStr).replace(/,/g, '').replace(/\s/g, '').replace('Rs.', '').replace('LKR', '');
+                const amount = parseFloat(amountStr);
+                
+                if (isNaN(amount) || amount === 0) continue;
+                
+                if (operatingUnit === 'Physical Archiving') {
+                    physicalMap[customerName] = (physicalMap[customerName] || 0) + amount;
+                    processedCount++;
+                } else if (operatingUnit === 'Digital Archiving') {
+                    digitalMap[customerName] = (digitalMap[customerName] || 0) + amount;
+                    processedCount++;
+                }
+            }
+            
+            console.log('Breakdown - Total transactions processed:', processedCount);
+            console.log('Physical customers:', Object.keys(physicalMap).length);
+            console.log('Digital customers:', Object.keys(digitalMap).length);
+            
+            renderCategory('physicalContent', physicalMap, 'Physical Archiving');
+            renderCategory('digitalContent', digitalMap, 'Digital Archiving');
+        }
+
+        // Render category breakdown
+        function renderCategory(containerId, dataMap, categoryName) {
+            const container = document.getElementById(containerId);
+            
+            if (!dataMap || Object.keys(dataMap).length === 0) {
+                container.innerHTML = '<div class="no-data-message">No data available for ' + categoryName + '</div>';
+                return;
+            }
+            
+            const sortedData = Object.entries(dataMap).sort((a, b) => b[1] - a[1]);
+            
+            let categoryTotal = 0;
+            sortedData.forEach(([_, amount]) => categoryTotal += amount);
+            
+            let html = `
+                <div class="summary-header">
+                    ${categoryName}: ${sortedData.length} Customers | Total: ${formatCurrency(categoryTotal)}
+                </div>
+            `;
+            
+            sortedData.forEach(([customer, amount]) => {
+                html += `
+                    <div class="breakdown-item">
+                        <div class="customer-name">${customer}</div>
+                        <div class="amount">${formatCurrency(amount)}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Load data on page load
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>
+</html>
