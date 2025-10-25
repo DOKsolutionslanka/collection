@@ -1407,6 +1407,14 @@ const MONTHLY_URLS = {
     'March 2026': 'https://docs.google.com/spreadsheets/d/1ke3ape3CKmGwxJwHOvZGKizdOON7OryBawSE6lY-u5o/export?format=csv&gid=1206756823'
 };
 
+// Define the correct order of months (fiscal year from April to March)
+const MONTH_ORDER = [
+    'April 2025', 'May 2025', 'June 2025', 'July 2025', 
+    'August 2025', 'September 2025', 'October 2025', 
+    'November 2025', 'December 2025', 'January 2026', 
+    'February 2026', 'March 2026'
+];
+
 // Global variables
 let physicalArchiving = 0;
 let digitalArchiving = 0;
@@ -1441,8 +1449,8 @@ function initializeMonthSelector() {
     // Clear existing options
     monthSelector.innerHTML = '<option value="">-- Select Month --</option>';
     
-    // Add months from configuration
-    Object.keys(MONTHLY_URLS).forEach(month => {
+    // Add months from configuration in chronological order
+    MONTH_ORDER.forEach(month => {
         const option = document.createElement('option');
         option.value = month;
         option.textContent = month;
@@ -1686,7 +1694,7 @@ function closeComparisonModal() {
 
 // Load comparison data
 async function loadComparisonData() {
-    const months = Object.keys(MONTHLY_URLS);
+    const months = MONTH_ORDER;
     const currentIndex = months.indexOf(currentMonth);
     
     if (currentIndex <= 0) {
@@ -1918,7 +1926,7 @@ function closeYearSummary() {
 
 // Load year summary data
 async function loadYearSummaryData() {
-    const months = Object.keys(MONTHLY_URLS);
+    const months = MONTH_ORDER;
     yearSummaryData = {};
     
     document.getElementById('yearSummaryGrid').innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><div class="spinner"></div><div>Loading year summary...</div></div>';
@@ -1974,7 +1982,7 @@ async function loadYearSummaryData() {
 
 // Update year summary UI
 function updateYearSummaryUI() {
-    const months = Object.keys(yearSummaryData);
+    const months = MONTH_ORDER.filter(month => yearSummaryData[month]);
     let totalPhysical = 0;
     let totalDigital = 0;
     let grandTotal = 0;
@@ -2058,7 +2066,7 @@ function createYearSummaryChart() {
         yearSummaryChartInstance.destroy();
     }
     
-    const months = Object.keys(yearSummaryData).sort();
+    const months = MONTH_ORDER.filter(month => yearSummaryData[month]);
     const physicalData = months.map(month => yearSummaryData[month].physical);
     const digitalData = months.map(month => yearSummaryData[month].digital);
     
@@ -2095,7 +2103,7 @@ function createYearSummaryChart() {
                 },
                 title: {
                     display: true,
-                    text: 'Yearly Collection Overview',
+                    text: 'Yearly Collection Overview (April 2025 - March 2026)',
                     font: { size: 16 },
                     padding: { top: 10, bottom: 15 }
                 }
@@ -2132,7 +2140,7 @@ function closeAnalysisModal() {
 
 // Load analysis data
 async function loadAnalysisData() {
-    const months = Object.keys(MONTHLY_URLS);
+    const months = MONTH_ORDER;
     allMonthsData = {};
     
     // Show loading state
@@ -2189,16 +2197,8 @@ async function loadAnalysisData() {
 
 // Update analysis UI
 function updateAnalysisUI() {
-    // Define the correct order of months (fiscal year from April to March)
-    const monthOrder = [
-        'April 2025', 'May 2025', 'June 2025', 'July 2025', 
-        'August 2025', 'September 2025', 'October 2025', 
-        'November 2025', 'December 2025', 'January 2026', 
-        'February 2026', 'March 2026'
-    ];
-    
     // Filter to only include months that have data
-    const months = monthOrder.filter(month => allMonthsData[month]);
+    const months = MONTH_ORDER.filter(month => allMonthsData[month]);
     
     let totalCollection = 0;
     let totalNetSales = 0;
@@ -2251,16 +2251,8 @@ function createAnalysisChart() {
         analysisChartInstance.destroy();
     }
     
-    // Define the correct order of months (fiscal year from April to March)
-    const monthOrder = [
-        'April 2025', 'May 2025', 'June 2025', 'July 2025', 
-        'August 2025', 'September 2025', 'October 2025', 
-        'November 2025', 'December 2025', 'January 2026', 
-        'February 2026', 'March 2026'
-    ];
-    
     // Filter to only include months that have data
-    const months = monthOrder.filter(month => allMonthsData[month]);
+    const months = MONTH_ORDER.filter(month => allMonthsData[month]);
     
     // Create data arrays in the correct chronological order
     const collectionData = [];
@@ -2888,7 +2880,7 @@ function downloadYearSummaryPDF() {
     doc.text(`Generated: ${today.toLocaleDateString()}`, 105, 37, { align: 'center' });
 
     // Calculate yearly totals
-    const months = Object.keys(yearSummaryData);
+    const months = MONTH_ORDER.filter(month => yearSummaryData[month]);
     let totalPhysical = 0;
     let totalDigital = 0;
     let grandTotal = 0;
@@ -2950,7 +2942,7 @@ function downloadYearSummaryPDF() {
     finalY += 7;
 
     const monthlyData = [['Month', 'Physical', 'Digital', 'Total', 'Collection %', 'Related Sales', 'Surplus/(Deficit)']];
-    months.sort().forEach(month => {
+    months.forEach(month => {
         const data = yearSummaryData[month];
         const collectionPercent = data.netSales > 0 ? (data.total / data.netSales * 100) : 0;
         const surplusDeficit = data.total - data.netSales;
@@ -2991,7 +2983,7 @@ function downloadYearSummaryPDF() {
 function downloadYearSummaryExcel() {
     const wb = XLSX.utils.book_new();
 
-    const months = Object.keys(yearSummaryData);
+    const months = MONTH_ORDER.filter(month => yearSummaryData[month]);
     let totalPhysical = 0;
     let totalDigital = 0;
     let grandTotal = 0;
@@ -3037,7 +3029,7 @@ function downloadYearSummaryExcel() {
 
     // Create monthly breakdown worksheet
     const monthlyData = [['Month', 'Physical Archiving', 'Digital Archiving', 'Total Collection', 'Collection %', 'Related Sales', 'Surplus/(Deficit)']];
-    months.sort().forEach(month => {
+    months.forEach(month => {
         const data = yearSummaryData[month];
         const collectionPercent = data.netSales > 0 ? (data.total / data.netSales * 100) : 0;
         const surplusDeficit = data.total - data.netSales;
@@ -3079,16 +3071,8 @@ function downloadAnalysisPDF() {
     const today = new Date();
     doc.text(`Generated: ${today.toLocaleDateString()}`, 105, 37, { align: 'center' });
 
-    // Define the correct order of months (fiscal year from April to March)
-    const monthOrder = [
-        'April 2025', 'May 2025', 'June 2025', 'July 2025', 
-        'August 2025', 'September 2025', 'October 2025', 
-        'November 2025', 'December 2025', 'January 2026', 
-        'February 2026', 'March 2026'
-    ];
-    
     // Filter to only include months that have data
-    const months = monthOrder.filter(month => allMonthsData[month]);
+    const months = MONTH_ORDER.filter(month => allMonthsData[month]);
     let totalCollection = 0;
     let totalNetSales = 0;
     
@@ -3143,16 +3127,8 @@ function downloadAnalysisPDF() {
 function downloadAnalysisExcel() {
     const wb = XLSX.utils.book_new();
 
-    // Define the correct order of months (fiscal year from April to March)
-    const monthOrder = [
-        'April 2025', 'May 2025', 'June 2025', 'July 2025', 
-        'August 2025', 'September 2025', 'October 2025', 
-        'November 2025', 'December 2025', 'January 2026', 
-        'February 2026', 'March 2026'
-    ];
-    
     // Filter to only include months that have data
-    const months = monthOrder.filter(month => allMonthsData[month]);
+    const months = MONTH_ORDER.filter(month => allMonthsData[month]);
     let totalCollection = 0;
     let totalNetSales = 0;
     
